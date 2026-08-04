@@ -230,7 +230,7 @@ dbt test               # Run every schema + singular test
 dbt build
 ```
 
-![dbt test output placeholder](screenshots/dbt-test-output.svg)
+![dbt build output — 94/94 passing against a live Databricks workspace](screenshots/dbt-test-output.jpg)
 
 ---
 
@@ -241,7 +241,7 @@ dbt docs generate   # Build the docs site + lineage graph from the manifest
 dbt docs serve       # Serve it locally (opens in your browser)
 ```
 
-![dbt docs lineage graph placeholder](screenshots/dbt-docs-lineage-graph.svg)
+![dbt docs lineage graph — generated from a live run](screenshots/dbt-docs-lineage-graph.jpg)
 
 ### dbt commands cheatsheet
 
