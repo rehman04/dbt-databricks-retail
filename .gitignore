@@ -1,0 +1,27 @@
+# dbt
+target/
+dbt_packages/
+dbt_modules/
+logs/
+profiles.yml
+.user.yml
+
+# Python virtual environment (used to install dbt-databricks)
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Secrets / environment variables
+.env
+.env.*
+
+# Databricks CLI
+.databrickscfg
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
