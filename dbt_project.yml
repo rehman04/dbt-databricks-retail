@@ -1,0 +1,52 @@
+name: 'dbt_databricks_retail'
+version: '1.0.0'
+config-version: 2
+
+# Must match a profile name in profiles.yml (or ~/.dbt/profiles.yml) —
+# this is how dbt knows *which* connection details to use for this project.
+profile: 'dbt_databricks_retail'
+
+# Tells dbt which directories to scan for each resource type.
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"        # compiled SQL + run artifacts land here (gitignored)
+clean-targets:                # folders removed by `dbt clean`
+  - "target"
+  - "dbt_packages"
+
+seeds:
+  dbt_databricks_retail:
+    +schema: seeds
+
+# Snapshots also set target_schema inline via their own config() block
+# (see snapshots/customers_snapshot.sql) — that explicit config always wins
+# over this project-level default, so this mainly documents intent.
+snapshots:
+  dbt_databricks_retail:
+    +target_schema: snapshots
+
+# Per-layer materialization strategy. +schema feeds generate_schema_name.sql
+# (macros/generate_schema_name.sql) to map each layer directly onto its
+# Unity Catalog schema — bronze/silver/gold — without dbt's default
+# target-schema prefixing.
+models:
+  dbt_databricks_retail:
+
+    staging:
+      +materialized: view
+      +schema: bronze
+
+    intermediate:
+      +materialized: view
+      +schema: silver
+
+    marts:
+      +materialized: table
+      +schema: gold
+      +file_format: delta        # explicit Delta Lake table format
+      +on_schema_change: sync_all_columns   # only affects incremental models — see README
