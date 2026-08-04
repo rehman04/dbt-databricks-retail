@@ -1,0 +1,120 @@
+version: 2
+
+models:
+  - name: stg_customers
+    description: One row per customer, renamed to standard snake_case with no other logic applied.
+    columns:
+      - name: customer_id
+        description: Primary key for a customer.
+        tests: [not_null, unique]
+      - name: first_name
+        description: Customer's given name.
+      - name: last_name
+        description: Customer's family name.
+      - name: email
+        description: Customer's email address.
+        tests: [not_null]
+      - name: country_code
+        description: ISO 3166-1 alpha-2 country code — must exist in the country_codes seed.
+        tests:
+          - relationships:
+              arguments:
+                to: ref('country_codes')
+                field: country_code
+      - name: customer_created_at
+        description: Timestamp the customer record was first created.
+        tests: [not_null]
+
+  - name: stg_orders
+    description: One row per order, with amounts converted from pence to GBP.
+    columns:
+      - name: order_id
+        description: Primary key for an order.
+        tests: [not_null, unique]
+      - name: customer_id
+        description: Foreign key to stg_customers.customer_id.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_customers')
+                field: customer_id
+      - name: order_date
+        description: Calendar date the order was placed.
+        tests: [not_null]
+      - name: order_status
+        description: Order lifecycle status.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['placed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']
+      - name: total_amount_gbp
+        description: Order header total in GBP, converted from total_amount_pence.
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+  - name: stg_products
+    description: One row per product in the catalog, with price converted from pence to GBP.
+    columns:
+      - name: product_id
+        description: Primary key for a product.
+        tests: [not_null, unique]
+      - name: product_name
+        description: Display name of the product.
+        tests: [not_null]
+      - name: category
+        description: Merchandising category.
+      - name: unit_price_gbp
+        description: Current list price in GBP, converted from price_pence.
+        tests: [not_null]
+      - name: is_active
+        description: Whether the product is currently sellable.
+        tests:
+          - accepted_values:
+              arguments:
+                values: [true, false]
+
+  - name: stg_order_items
+    description: One row per order line item, with a computed line total in GBP.
+    columns:
+      - name: order_item_id
+        description: Primary key for an order line item.
+        tests: [not_null, unique]
+      - name: order_id
+        description: Foreign key to stg_orders.order_id.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_orders')
+                field: order_id
+      - name: product_id
+        description: Foreign key to stg_products.product_id.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_products')
+                field: product_id
+      - name: quantity
+        description: Number of units purchased on this line.
+        tests: [not_null]
+      - name: unit_price_gbp
+        description: Price per unit at time of purchase, in GBP.
+        tests: [not_null]
+      - name: line_item_total_gbp
+        description: quantity * unit_price_gbp for this line.
+        tests: [not_null]
+    tests:
+      # dbt-utils generic test applied at the model level (spans multiple columns):
+      # business rule — a given product should appear at most once per order
+      # (quantity should be adjusted on the existing line, not added as a duplicate line).
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - order_id
+              - product_id

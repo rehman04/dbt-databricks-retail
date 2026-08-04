@@ -1,0 +1,85 @@
+version: 2
+
+sources:
+  - name: retail_raw
+    description: >
+      Raw retail tables landed into Unity Catalog by the upstream ingestion
+      pipeline (outside the scope of this dbt project). This is the
+      untransformed landing zone — distinct from the "bronze" schema our
+      staging models write into.
+    database: "{{ env_var('DBT_DATABRICKS_CATALOG', 'dev') }}"
+    schema: raw
+    tables:
+      - name: raw_orders
+        description: One row per customer order, as recorded by the order management system.
+        columns:
+          - name: order_id
+            description: Natural primary key for an order.
+            tests: [not_null, unique]
+          - name: customer_id
+            description: Foreign key to raw_customers.customer_id.
+            tests: [not_null]
+          - name: order_date
+            description: Calendar date the order was placed.
+            tests: [not_null]
+          - name: status
+            description: Raw order lifecycle status as recorded by the source system.
+            tests: [not_null]
+          - name: total_amount_pence
+            description: Order header total, in integer pence (no floating point rounding error).
+            tests: [not_null]
+
+      - name: raw_customers
+        description: One row per registered customer.
+        columns:
+          - name: customer_id
+            description: Natural primary key for a customer.
+            tests: [not_null, unique]
+          - name: first_name
+            description: Customer's given name.
+          - name: last_name
+            description: Customer's family name.
+          - name: email
+            description: Customer's email address, used as a contact/marketing key.
+            tests: [not_null]
+          - name: country_code
+            description: ISO 3166-1 alpha-2 country code of the customer's registered address.
+          - name: created_at
+            description: Timestamp the customer record was first created in the source system.
+            tests: [not_null]
+
+      - name: raw_products
+        description: One row per sellable product (product catalog).
+        columns:
+          - name: product_id
+            description: Natural primary key for a product.
+            tests: [not_null, unique]
+          - name: product_name
+            description: Display name of the product.
+            tests: [not_null]
+          - name: category
+            description: Merchandising category the product belongs to.
+          - name: price_pence
+            description: Current list price, in integer pence.
+            tests: [not_null]
+          - name: is_active
+            description: Whether the product is currently sellable (false = discontinued/delisted).
+
+      - name: raw_order_items
+        description: One row per line item within an order (order-to-product bridge, at line grain).
+        columns:
+          - name: order_item_id
+            description: Natural primary key for an order line item.
+            tests: [not_null, unique]
+          - name: order_id
+            description: Foreign key to raw_orders.order_id.
+            tests: [not_null]
+          - name: product_id
+            description: Foreign key to raw_products.product_id.
+            tests: [not_null]
+          - name: quantity
+            description: Number of units of the product purchased on this line.
+            tests: [not_null]
+          - name: unit_price_pence
+            description: Price per unit at time of purchase, in integer pence (may differ from current catalog price).
+            tests: [not_null]
