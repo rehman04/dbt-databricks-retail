@@ -1,0 +1,81 @@
+version: 2
+
+models:
+  - name: mart_orders
+    description: >
+      Wide, BI-facing fact table at order grain. One row per order, combining
+      order attributes, denormalized customer info, and line-item aggregates —
+      the primary table for order-level reporting and dashboards.
+    columns:
+      - name: order_id
+        description: Primary key for an order.
+        tests: [not_null, unique]
+      - name: customer_id
+        description: Foreign key to mart_customers.customer_id.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('mart_customers')
+                field: customer_id
+      - name: first_name
+        description: Customer's given name.
+      - name: last_name
+        description: Customer's family name.
+      - name: email
+        description: Customer's email address.
+      - name: country_code
+        description: Customer's country code.
+      - name: order_date
+        description: Calendar date the order was placed.
+        tests: [not_null]
+      - name: order_status
+        description: Order lifecycle status.
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['placed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']
+      - name: total_amount_gbp
+        description: Order header total in GBP.
+        tests: [not_null]
+      - name: item_count
+        description: Number of distinct line items on the order.
+      - name: total_units
+        description: Total unit quantity across all line items.
+      - name: computed_total_gbp
+        description: Sum of line item totals, computed independently of the header total.
+      - name: amount_variance_gbp
+        description: Header total minus computed total — a data-quality signal, ideally always 0.
+
+  - name: mart_customers
+    description: >
+      Customer 360 table — one row per customer with lifetime order metrics
+      and a value-based segment, ready for CRM/marketing use cases.
+    columns:
+      - name: customer_id
+        description: Primary key for a customer.
+        tests: [not_null, unique]
+      - name: first_name
+        description: Customer's given name.
+      - name: last_name
+        description: Customer's family name.
+      - name: email
+        description: Customer's email address.
+      - name: country_code
+        description: Customer's country code.
+      - name: lifetime_order_count
+        description: Count of distinct orders ever placed by this customer.
+        tests: [not_null]
+      - name: lifetime_value_gbp
+        description: Sum of total_amount_gbp across all of the customer's orders.
+        tests: [not_null]
+      - name: first_order_date
+        description: Date of the customer's earliest order.
+      - name: most_recent_order_date
+        description: Date of the customer's most recent order.
+      - name: customer_segment
+        description: Value-based segment derived from lifetime_value_gbp (>=500 high_value, >=100 mid_value, else low_value).
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['high_value', 'mid_value', 'low_value']

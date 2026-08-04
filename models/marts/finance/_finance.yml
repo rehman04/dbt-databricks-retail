@@ -1,0 +1,27 @@
+version: 2
+
+models:
+  - name: mart_revenue_summary
+    description: >
+      Finance-ready daily revenue report with trailing 7-day and 30-day
+      rolling revenue windows, computed via SQL window functions.
+    columns:
+      - name: order_date
+        description: Primary key at this grain — one row per calendar date.
+        tests: [not_null, unique]
+      - name: order_count
+        description: Count of distinct orders placed on this date.
+        tests: [not_null]
+      - name: daily_revenue_gbp
+        description: Total revenue recognized on this date.
+        tests:
+          - not_null
+          # dbt_expectations generic test (Great-Expectations-style bounds check):
+          # revenue must never go negative.
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+      - name: rolling_7_day_revenue_gbp
+        description: Sum of daily_revenue_gbp over the trailing 7 calendar days (inclusive of the current row).
+      - name: rolling_30_day_revenue_gbp
+        description: Sum of daily_revenue_gbp over the trailing 30 calendar days (inclusive of the current row).
