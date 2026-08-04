@@ -1,0 +1,83 @@
+version: 2
+
+models:
+  - name: int_orders_enriched
+    description: One row per order, enriched with customer attributes and order-item aggregates.
+    columns:
+      - name: order_id
+        description: Primary key for an order.
+        tests: [not_null, unique]
+      - name: customer_id
+        description: Foreign key to stg_customers.customer_id.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_customers')
+                field: customer_id
+      - name: first_name
+        description: Customer's given name (denormalized from stg_customers).
+      - name: last_name
+        description: Customer's family name (denormalized from stg_customers).
+      - name: email
+        description: Customer's email address (denormalized from stg_customers).
+      - name: country_code
+        description: Customer's country code (denormalized from stg_customers).
+      - name: order_date
+        description: Calendar date the order was placed.
+        tests: [not_null]
+      - name: order_status
+        description: Order lifecycle status.
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['placed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']
+      - name: total_amount_gbp
+        description: Order header total in GBP.
+        tests: [not_null]
+      - name: item_count
+        description: Number of distinct line items on the order.
+      - name: total_units
+        description: Total unit quantity across all line items on the order.
+      - name: computed_total_gbp
+        description: Sum of line_item_total_gbp across the order's items — computed independently of the header total.
+      - name: amount_variance_gbp
+        description: total_amount_gbp minus computed_total_gbp. Non-zero values flag drift between the order header and its line items, worth investigating.
+
+  - name: int_customer_orders
+    description: One row per customer, rolling up their full order history.
+    columns:
+      - name: customer_id
+        description: Primary key for a customer at this grain.
+        tests: [not_null, unique]
+      - name: first_name
+        description: Customer's given name.
+      - name: last_name
+        description: Customer's family name.
+      - name: email
+        description: Customer's email address.
+      - name: country_code
+        description: Customer's country code.
+      - name: lifetime_order_count
+        description: Count of distinct orders ever placed by this customer.
+        tests: [not_null]
+      - name: lifetime_value_gbp
+        description: Sum of total_amount_gbp across all of the customer's orders.
+        tests: [not_null]
+      - name: first_order_date
+        description: Date of the customer's earliest order.
+      - name: most_recent_order_date
+        description: Date of the customer's most recent order.
+
+  - name: int_revenue_daily
+    description: One row per calendar date with an order, aggregating order count and revenue.
+    columns:
+      - name: order_date
+        description: Primary key at this grain — one row per calendar date.
+        tests: [not_null, unique]
+      - name: order_count
+        description: Count of distinct orders placed on this date.
+        tests: [not_null]
+      - name: daily_revenue_gbp
+        description: Sum of total_amount_gbp for orders placed on this date.
+        tests: [not_null]
